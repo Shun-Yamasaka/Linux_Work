@@ -1,0 +1,69 @@
+■ 前提
+Linuxの基本セットアップまで完了していること
+
+■ インストール手順
+1. メディアをPCにセットしマウントする。
+
+#メディアをマウントするディレクトリを作成
+[root@localhost~]# mkdir /media/centos7
+
+# メディアをマウント
+[root@localhost~]# mount -t iso9660 /dev/cdrom /media/centos7
+
+# repoファイルを作成する
+[root@localhost~]# cd /etc/yum.repos.d
+[root@localhost~]# vi media_default.repo
+
+media_default.repo
+----------------------------------------------------------
+[media_default]
+name=media_default
+baseurl=file:///media/centos7
+gpgcheck=0
+enabled=0
+----------------------------------------------------------
+
+2. すでに古いgitが入っている場合削除する
+[root@localhost~]# yum remove git
+
+3. 必要なパッケージをインストールする。
+[root@localhost~]# sudo yum install -y --disablerepo=* --enablerepo=media_default gcc curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker autoconf
+
+4. gitパッケージを適切な場所に配置する
+[root@localhost~]# cd /usr/local/src
+
+5. gitパッケージを解凍する。
+[root@localhost~]# sudo tar xzvf git-2.34.1.tar.gz
+
+6. 解凍したディレクトリに移動
+[root@localhost~]# cd git-2.34.1
+
+7. makeコマンドでインストール
+[root@localhost~]# sudo make prefix=/usr/local all
+[root@localhost~]# sudo make prefix=/usr/local install
+
+もしくは
+[root@localhost~]# make configure
+[root@localhost~]# ./configure --prefix=/usr
+[root@localhost~]# make all doc info
+[root@localhost~]# sudo make install install-doc install-html install-info
+
+________________________________________________________________________________________________
+
+<gitサーバでリポジトリを作成する>
+
+git で使用するための git ユーザを作成
+[root@localhost~]# useradd git
+
+git ユーザのパスワードを新規作成
+[root@localhost~]# passwd git
+
+git サーバーのテストリポジトリを作成する
+[root@localhost~]# su - git
+[git@localhost~]$ mkdir /home/git/testrepo.git
+[git@localhost~]$ cd /home/git/testrepo.git
+[git@localhost~]$ git init --bare --shared=true
+
+クライアント端末からリポジトリをクローン
+$ git clone git@gitサーバのIP:testrepo.git
+

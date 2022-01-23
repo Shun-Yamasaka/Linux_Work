@@ -1,0 +1,214 @@
+Redmine CentOS7インストール手順
+
+■ 前提条件
+オンライン環境であること
+
+■ SELinuxを無効にする
+# viでselinuxの設定ファイルを開く
+[root@localhost ~]# vi /etc/sysconfig/selinux
+------------------------------------------------------------------------------------------------
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+------------------------------------------------------------------------------------------------
+
+# OSを再起動
+[root@localhost ~]# reboot
+
+# 設定が無効になっていることを確認する
+[root@localhost ~]# getenforce
+Disabled
+
+
+■ FirewalldでHTTPを許可
+# デフォルトzoneにhttpを追加
+[root@localhost ~]# firewall-cmd --zone=public --add-service=http --permanent
+success
+
+# 追加した設定を反映
+[root@localhost ~]# firewall-cmd --reload
+success
+
+# 反映されていることを確認
+[root@localhost ~]# firewall-cmd --zone=public --list-services
+dhcpv6-client http ssh
+
+
+■ 必要なパッケージのインストール
+# 開発ツール(Cコンパイラ等)のインストール
+[root@localhost ~]# yum -y groupinstall "Development Tools"
+
+# RubyとPassengerのビルドに必要なヘッダファイルなどのインストール
+[root@localhost ~]# yum -y install openssl-devel readline-devel zlib-devel curl-devel libffi-devel
+
+# PostgreSQLとヘッダファイルのインストール
+[root@localhost ~]# yum -y install postgresql-server postgresql-devel
+
+# Apacheとヘッダファイルのインストール
+[root@localhost ~]# yum -y install httpd httpd-devel
+
+
+■ Rubyインストール
+# Rubyのパッケージをダウンロードする
+[root@localhost ~]# curl -O https://cache.ruby-lang.org/pub/ruby/2.4/ruby-2.4.1.tar.gz
+
+# Rubyのビルド
+[root@localhost ~]# tar xvf ruby-2.4.1.tar.gz
+[root@localhost ~]# cd ruby-2.4.1
+[root@localhost ~]# ./configure --disable-install-doc
+[root@localhost ~]# make
+[root@localhost ~]# make install
+[root@localhost ~]# cd ../
+
+# Rubyのインストールを確認
+[root@localhost ~]# ruby -v
+ruby 2.4.1p111 (2017-03-22 revision 58053) [x86_64-linux]
+
+# bundlerのインストール
+[root@localhost ~]# gem install bundler
+
+
+■ PostgreSQLの設定
+# データベースクラスタの新規作成
+[root@localhost ~]# postgresql-setup initdb
+Initializing database ... OK
+
+# RedmineからPostgreSQLに接続するための設定を追加
+[root@localhost ~]# vi /var/lib/pgsql/data/pg_hba.conf
+---------------------------------------------------------------------------
+# Put your actual configuration here
+# ----------------------------------
+#
+# If you want to allow non-local connections, you need to add more
+# "host" records.  In that case you will also need to make PostgreSQL
+# listen on a non-local interface via the listen_addresses
+# configuration parameter, or via the -i or -h command line switches.
+### 以下を追加 ###
+host    redmine         redmine         127.0.0.1/32            md5
+host    redmine         redmine         ::1/128                 md5
+---------------------------------------------------------------------------
+
+# PostgreSQLの起動および自動起動の設定
+[root@localhost ~]# systemctl start postgresql.service
+[root@localhost ~]# systemctl enable postgresql.service
+
+# PostgreSQLのディレクトリに移動
+[root@localhost ~]# cd /var/lib/pgsql
+
+# Redmine用ユーザーの作成
+[root@localhost ~]# sudo -u postgres createuser -P redmine
+新しいロールのためのパスワード: (PostgreSQLの redmine用ユーザーに設定するパスワードを入力)
+もう一度入力してください: (パスワード再入力)
+
+# Redmine用データベースの作成
+[root@localhost ~]# sudo -u postgres createdb -E UTF-8 -l ja_JP.UTF-8 -O redmine -T template0 redmine
+
+# 作業終了
+[root@localhost ~]# cd
+
+
+■ Redmineのインストール
+# Redmineのtarballを「/var/www」に配置する
+redmine-4.2.3.tar.gz
+
+# tarballを展開する
+[root@localhost ~]# tar xvzf redmine-4.2.3.tar.gz
+
+# データベースへの接続設定
+# config/database.ymlを作成しpostgresqlの設定を記載する。passwordは設定したパスワードを記載する。
+[root@localhost ~]# cd /var/www/redmine-4.2.3/config
+[root@localhost ~]# vi database.yml
+----------------------------------------
+production:
+  adapter: postgresql
+  database: redmine
+  host: localhost
+  username: redmine
+  password: "redmine"
+  encoding: utf8
+----------------------------------------
+
+# Redmineのインストールディレクトリへ移動
+[root@localhost ~]# cd /var/www/redmine-4.2.3
+
+# gemパッケージのインストール
+[root@localhost ~]# bundle install --without development test
+
+
+■ Redmineの初期設定と初期データ登録
+# セッション改ざん防止用秘密鍵の作成
+[root@localhost ~]# bundle exec rake generate_secret_token
+
+# データベースのテーブル作成
+# config/database.yml で指定したデータベースにテーブルを作成します。
+[root@localhost ~]# RAILS_ENV=production bundle exec rake db:migrate
+
+# デフォルトデータの登録
+# 作成したテーブルにデフォルトデータのロードを行います。
+# この操作によりトラッカー、優先度、ステータス、ロール、ワークフローなどの初期値が登録されます。
+[root@localhost ~]# RAILS_ENV=production REDMINE_LANG=ja bundle exec rake redmine:load_default_data
+
+
+■ Passengerのインストール
+# Apache上でRedmineなどのRailsアプリケーションを実行するために使われるPhusion Passengerをインストールします。
+[root@localhost ~]# gem install passenger -v 5.1.12 --no-rdoc --no-ri
+
+
+# PassengerのApache用モジュールのインストール
+[root@localhost ~]# passenger-install-apache2-module --auto --languages ruby
+
+# Apache用設定内容の確認
+# 出力内容はApacheの設定を行うときに使用します。
+[root@localhost ~]# passenger-install-apache2-module --snippet
+LoadModule passenger_module /usr/local/lib/ruby/gems/2.4.0/gems/passenger-5.1.12/buildout/apache2/mod_passenger.so
+<IfModule mod_passenger.c>
+  PassengerRoot /usr/local/lib/ruby/gems/2.4.0/gems/passenger-5.1.12
+  PassengerDefaultRuby /usr/local/bin/ruby
+</IfModule>
+
+
+■ Apacheの設定
+# redmine.confを作成し以下の内容を記述する。
+# ※LoadModuleの部分はApache設定内容確認で出力された内容を記述すること
+[root@localhost ~]# vi /etc/httpd/conf.d/redmine.conf
+--------------------------------------------------------------------------------------------------------------------------
+Alias /redmine /var/www/redmine-4.2.3/public
+<Location /redmine>
+  PassengerBaseURI /redmine
+  PassengerAppRoot /var/www/redmine-4.2.3
+</Location>
+# Passengerの基本設定。
+# passenger-install-apache2-module --snippetで出力された内容を記述する。
+LoadModule passenger_module /usr/local/lib/ruby/gems/2.4.0/gems/passenger-5.1.12/buildout/apache2/mod_passenger.so
+<IfModule mod_passenger.c>
+  PassengerRoot /usr/local/lib/ruby/gems/2.4.0/gems/passenger-5.1.12
+  PassengerDefaultRuby /usr/local/bin/ruby
+</IfModule>
+--------------------------------------------------------------------------------------------------------------------------
+
+# Apacheの起動および自動起動の設定
+[root@localhost ~]# systemctl start httpd.service
+[root@localhost ~]# systemctl enable httpd.service
+
+# Apache上のPassengerでRedmineを実行するための設定
+[root@localhost ~]# chown -R apache:apache /var/www/redmine-4.2.3
+
+# Apacheを再起動
+[root@localhost ~]# service httpd configtest
+[root@localhost ~]# systemctl restart httpd.service
+
+
+■ Redmineにアクセス
+Webブラウザを起動し「http://サーバIPアドレスまたはホスト名/redmine」でアクセスする。
+右上のログインからログインを行う。
+初回のログインID、パスワードは「admin」で登録されている。
+ログイン後パスワードを変更する。
+

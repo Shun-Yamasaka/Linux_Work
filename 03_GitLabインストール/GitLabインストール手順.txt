@@ -1,0 +1,43 @@
+■ 必要パッケージのインストール
+[root@localhost ~]# sudo yum install -y curl policycoreutils openssh-server openssh-clients
+[root@localhost ~]# sudo systemctl enable sshd
+[root@localhost ~]# sudo systemctl start sshd
+[root@localhost ~]# sudo yum install -y postfix
+[root@localhost ~]# sudo systemctl enable postfix
+[root@localhost ~]# sudo systemctl start postfix
+# ファイアウォールのhttpを許可する
+[root@localhost ~]# firewall-cmd --permanent --add-service=http
+[root@localhost ~]# systemctl reload firewalld
+
+
+■ GitLabのインストール
+[root@localhost ~]# curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/\script.rpm.sh | sudo bash
+[root@localhost ~]# sudo yum install -y gitlab-ce
+# GitLab CEのYUMリポジトリ内容確認
+[root@localhost ~]# cat /etc/yum.repos.d/gitlab_gitlab-ce.repo
+
+
+■ GitLabの再構成
+[root@localhost ~]# sudo gitlab-ctl reconfigure
+
+
+■ 設定ファイルの修正
+[root@localhost ~]# cd /etc/gitlab
+[root@localhost ~]# vi gitlab.rb
+------------------------------------------------------------------
+external_url 'http://サーバのIPアドレス'
+---
+nginx['listen_port'] = 8080
+---
+gitlab_workhorse['auth_backend'] = "http://localhost:8081"
+---
+puma['port'] = 8081
+------------------------------------------------------------------
+# GitLabを再起動する
+[root@localhost ~]# sudo gitlab-ctl reconfigure
+[root@localhost ~]# sudo gitlab-ctl restart
+
+
+■ WebブラウザでGitLabにアクセスする
+http://サーバのIPアドレス:8080/
+※rootユーザのパスワードは「/etc/gitlab」のinitial_root_passwordに記述がある
