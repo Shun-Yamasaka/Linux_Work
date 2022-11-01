@@ -59,6 +59,9 @@ dhcpv6-client http ssh
 ■ Rubyインストール
 # Rubyのパッケージをダウンロードする
 [root@localhost ~]# curl -O https://cache.ruby-lang.org/pub/ruby/2.4/ruby-2.4.1.tar.gz
+# もしくはRubyのtarballをサーバに転送する
+ruby-2.4.1.tar.gz
+
 
 # Rubyのビルド
 [root@localhost ~]# tar xvf ruby-2.4.1.tar.gz
