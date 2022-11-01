@@ -1,0 +1,71 @@
+◆sambaとは
+Windowsファイル共有を行うための互換機能を持つサーバアプリケーション
+サーバ上でsambaを構築することでファイルサーバとして動作させることができ、NASのように利用できる。
+
+
+◆sambaの設定をする（Redhat系）
+# 事前処置としてSELinuxを停止する
+vi /etc/sysconfig/selinux
+------------------
+SELINUX=disabled
+------------------
+
+# sambaがインストールされているか確認
+rpm -q samba
+
+# sambaインストール
+yum install samba
+
+# samba用ディレクトリ作成
+mkdir /xxx/share
+
+# パーミッションを変更
+chmod 777 xxx/share
+
+# sambaのコンフィグファイル操作
+vi /etc/samba/smb.conf
+--以下追加---------------
+[share]
+        path = /xxx/share # 共有するディレクトリパス
+        read only = no    # 読み取り専用を拒否
+        guest ok = yes    # ゲスト接続を許可
+-------------------------
+
+# sambaユーザを追加
+useradd -s /bin/bash -m samba
+
+# パスワードを設定
+passwd samba
+
+# sambaユーザ登録（実行後パスワードを入力）windowsから接続するときに使用するログインIDとパスワード
+sudo pdbedit -a [USERName]
+
+# ファイアウォールの設定確認
+firewall-cmd --list-all
+
+# ファイアウォールの設定（sambaではTCP445ポートを使用する）
+# 445ポートを永続的に開放（シャットダウンしても開放したままになる）
+firewall-cmd --add-port=445/tcp --permanent
+
+# ファイアウォールの設定の再読込み
+firewall-cmd --reload
+
+# samba再起動
+systemctl restart smb.service
+
+windowsのディレクトリから
+「\\LinuxIP\share」にアクセスする
+
+--------その他参考コマンド--------
+# sambaユーザ追加
+sudo pdbedit -a [USERName]
+
+# sambaユーザ削除
+sudo pdbedit -x [USERName]
+
+# sambaユーザ確認
+sudo pdbedit -L
+sudo pdbedit -L -v
+
+# sambaの設定を確認
+testparm
