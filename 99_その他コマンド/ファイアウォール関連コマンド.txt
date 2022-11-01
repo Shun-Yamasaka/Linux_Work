@@ -1,0 +1,13 @@
+◆Redhat系Linux ファイアウォール関連のコマンド
+# ファイアウォールの設定確認
+firewall-cmd --list-all
+
+# 許可しているポートの確認
+firewall-cmd --list-ports
+
+# 指定ポートを永続的に開放（xxxxにポート番号を指定）
+firewall-cmd --add-port=xxxx/tcp --permanent
+
+# ファイアウォールの設定の再読込み
+firewall-cmd --reload
+

@@ -1,0 +1,15 @@
+# xxxxにはサービス名称が入る
+# サービスのステータスを確認
+systemctl status xxxx
+
+# サービスの再起動
+systemctl restart xxxx
+
+# サービスの自動起動設定
+systemctl enable xxxx
+
+# サービスの自動起動を停止する
+systemctl disable xxxx
+
+# サービスの停止
+systemctl stop
