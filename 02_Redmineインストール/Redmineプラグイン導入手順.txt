@@ -1,0 +1,35 @@
+◆Work timeプラグインの導入
+■ プラグインのtarを以下に配置
+[root@localhost ~]# cd /var/www/redmine-4.2.3/plugins
+
+■ tarを展開
+[root@localhost ~]# tar xvzf redmine_work_time-0.4.1.tar.gz
+[root@localhost ~]# mv redmine_work_time-0.4.1 redmine_work_time
+
+■ DBのマイグレーションを実行
+[root@localhost ~]# bundle exec rake redmine:plugins:migrate RAILS_ENV=production
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+◆redmine-view-customizeプラグインの導入
+■ プラグインのtarを以下に配置
+[root@localhost ~]# cd /var/www/redmine-4.2.3/plugins
+
+■ tarを展開
+[root@localhost ~]# tar xvzf redmine-view-customize-3.0.1.tar.gz
+[root@localhost ~]# mv redmine-view-customize-3.0.1 view_customize
+
+■ 必要なgemをオフライン環境でインストール
+# activerecord-compatible_legacy_migration-0.1.2.gemを下記からダウンロード
+ 「https://gems.ruby-china.com/gems」
+# WinSCPにて任意のディレクトリにダウンロードしたgemを格納
+# gemインストール
+[root@redmine plugins]# gem install --local activerecord-compatible_legacy_migration-0.1.2.gem
+# gemが正常にインストールされているか確認
+[root@redmine plugins]# gem list
+
+■ DBのマイグレーションを実行
+[root@localhost ~]# bundle exec rake redmine:plugins:migrate RAILS_ENV=production
+
+■ 必要であればApacheを再起動
+[root@localhost ~]# systemctl restart httpd.service
