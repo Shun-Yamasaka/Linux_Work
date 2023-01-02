@@ -1,0 +1,50 @@
+SSHサーバ
+　SSH（Secure Shell）は通信を暗号化し、安全にリモート操作が可能になるプロトコル
+
+◆SSHサービスを有効にする
+> yum install openssh openssh-clients openssh-server
+
+◆SSHサーバの起動と自動起動の設定
+> systemctl restart sshd.service
+> systemctl enable sshd.service
+
+◆リモートログイン例
+>ssh 192.168.1.1
+ rootのパスワードが求められる
+>ssh apps@192.168.1.1
+ appsユーザのパスワードが求められる
+
+◆rootユーザのリモート接続を拒否する
+> cd /etc/ssh
+> vi sshd_config
+--------------------------------------
+43   #PermitRootLogin yes
+43   PermitRootLogin no
+--------------------------------------
+> systemctl restart sshd.service
+
+
+◆公開鍵と秘密鍵を作成
+# 鍵を作成（最初に配置場所を聞かれる、通常Enterでよい。次にパスフレーズを聞かれる）
+> ssh-keygen
+   Enterを押下
+   パスフレーズを入力
+# .sshディレクトリができていることを確認
+> ls -lart
+> cd .ssh/
+  
+  id_rsa  id_rsa.pubが作られる
+  秘密鍵：id_rsa
+  公開鍵：id_rsa.pub
+
+◆公開鍵をサーバに保存
+cd .ssh
+# 公開鍵の内容を記載するファイルを作成
+> touch authorized_keys
+# 他のユーザが閲覧できないようにアクセス権を所有者のみ閲覧可（600）に変更
+> chmod 600 authorized_keys
+# catコマンドでauthorized_keysファイルに追記
+cat id_rsa.pub >> authorized_keys
+
+
+
