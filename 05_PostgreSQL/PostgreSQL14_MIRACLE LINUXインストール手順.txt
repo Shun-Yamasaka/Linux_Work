@@ -1,0 +1,68 @@
+MIRACLE LINUX PostgreSQL 14をインストールする手順
+
+[PostgreSQL14インストール]
+# リポジトリを追加
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+# 既存のモジュールを無効
+sudo dnf -qy module disable postgresql
+
+# インストールを実行
+sudo dnf install -y postgresql14-server
+
+
+[PostgreSQL 14初期化]
+# 初期化
+sudo /usr/pgsql-14/bin/postgresql-14-setup initdb
+
+# 起動設定と開始
+sudo systemctl enable --now postgresql-14
+
+# ステータス確認
+systemctl status postgresql-14
+
+# 設定ファイル等の配置場所
+# /var/lib/pgsql/14/data
+
+
+[PostgreSQL14 管理ユーザーのパスワード設定]
+sudo su - postgres
+psql -c "alter user postgres with password 'passwordを入力'"
+exit
+
+[外部接続許可]
+vi /var/lib/pgsql/14/data/postgresql.conf
+
+-------------------------
+listen_addresses = '*'
+port = 5432
+
+#log_filename = 'postgresql-%a.log'	# log file name pattern,
+log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+-------------------------
+
+vi /var/lib/pgsql/14/data/pg_hba.conf
+-------------------------
+local   all             all                                     peer
+# IPv4 local connections:
+# host    all             all             127.0.0.1/32            scram-sha-256
+host    all             all             192.168.0.0/16            scram-sha-256
+# IPv6 local connections:
+host    all             all             ::1/128                 scram-sha-256
+-------------------------
+
+# 接続するユーザーを作成
+sudo su - postgres
+createuser --pwprompt --interactive pgadmin
+新しいロールのためのパスワード: 
+もう一度入力してください：
+新しいロールをスーパユーザにしますか？ (y/n)y
+# ログアウト
+exit
+# PostgreSQL再起動
+sudo systemctl restart postgresql-14
+
+# firewallを許可
+sudo firewall-cmd --add-port=5432/tcp --zone=public --permanent
+sudo firewall-cmd --reload
+
